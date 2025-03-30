@@ -2,12 +2,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, TypedDict
 from zipfile import ZipFile
+import logging
 
 import xmltodict
 from bleak import AdvertisementData, BLEDevice
 
 from .client import Client
 
+_LOGGER = logging.getLogger(__name__)
+
+COMMAND_TIME = 15
 SELECTS = [
     "product",  # 1
     "grinder_ratio",  # 2
@@ -54,6 +58,8 @@ class Device:
         self.values = None
         self.updates_connect: list = []
         self.updates_product: list = []
+        self.updates_statistics = []
+        self.statistics = {"total_products": None, "product_counts": {}}
 
     @property
     def mac(self) -> str:
@@ -129,7 +135,8 @@ class Device:
         if not attribute:
             return None
 
-        value = next(i["@Value"] for i in attribute["ITEM"] if i["@Name"] == option)
+        value = next(i["@Value"]
+                     for i in attribute["ITEM"] if i["@Name"] == option)
         self.set_value(attr, int(value, 16))
 
     def set_value(self, attr: str, value: int):
@@ -182,9 +189,82 @@ class Device:
         # data[0] = self.key
         # data[9] = 1
         # data[16] = 6
-        # data[17] = self.key
+
+        # need to be set or the machine will go into a half broken state
+        data[17] = self.client.key
 
         return data
+
+    # Add method to register statistics updates
+    def register_statistics_update(self, handler: Callable):
+        """Register a callback for statistics updates."""
+        self.updates_statistics.append(handler)
+
+    async def read_statistics(self, force_update: bool = False):
+        """Read statistics from the machine."""
+
+        _LOGGER.debug("Reading Jura statistics...")
+
+        # Read statistics data from client
+        decrypted_data = await self.client.read_statistics_data()
+        if decrypted_data is None:
+            _LOGGER.debug(
+                "Failed to read statistics data, returning existing statistics")
+            return self.statistics
+
+        # Convert all 3-byte chunks to integers
+        product_counts_array = []
+        for i in range(0, len(decrypted_data), 3):
+            if i + 3 <= len(decrypted_data):
+                # Convert 3 bytes to an integer
+                count = int.from_bytes(decrypted_data[i:i+3], 'big')
+                if count == 0xFFFF:  # means 0 it seems
+                    count = 0
+                product_counts_array.append(count)
+
+        # get total_count from first 3 bytes if available
+        total_count = product_counts_array[0] if product_counts_array and product_counts_array[0] is not None else None
+        _LOGGER.info(
+            f"Total coffee count from data: {total_count if total_count is not None else 'undefined'}")
+
+        # remove aberrant values if any
+        if total_count == 0 or total_count > 1000000:
+            _LOGGER.info(
+                "total 0 or too high, something's wrong, returning existing statistics")
+            return self.statistics
+        # get the names associated to the products counts
+        product_counts = {}
+        for i, count in enumerate(product_counts_array):
+            if i == 0:  # Skip the total
+                continue
+
+            product = next(
+                (p for p in self.products if int(p['@Code'], 16) == i), None)
+            if product:
+                product_counts[product['@Name']] = count
+                _LOGGER.debug(
+                    f"Stat entry: Position {i} = {count} -> {product['@Name']}")
+            else:
+                _LOGGER.debug(
+                    f"No product found for code {i} with count {count}")
+
+        # Log the final counts at info log level
+        for product, count in product_counts.items():
+            _LOGGER.info(f"Product: {product}, Count: {count}")
+
+        # Save the statistics
+        self.statistics = {
+            "total_products": total_count,
+            "product_counts": product_counts
+        }
+
+        # Notify all statistics listeners
+        _LOGGER.debug(
+            f"Notifying {len(self.updates_statistics)} statistics listeners")
+        for handler in self.updates_statistics:
+            handler()
+
+        return self.statistics
 
 
 class EmptyModel(Exception):

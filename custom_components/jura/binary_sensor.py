@@ -1,3 +1,5 @@
+import logging
+
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
@@ -6,7 +8,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-import logging
 
 from . import DOMAIN
 from .core.entity import JuraEntity
@@ -80,7 +81,7 @@ ALERT_SENSORS = [
         "icon": "mdi:cup-water",
         "device_class": BinarySensorDeviceClass.PROBLEM,
         "entity_category": EntityCategory.DIAGNOSTIC,
-    }
+    },
 ]
 
 
@@ -90,21 +91,11 @@ async def async_setup_entry(
     device = hass.data[DOMAIN][config_entry.entry_id]
 
     # Create connection sensor
-    entities = [JuraSensor(device, "connection")]
+    entities: list = [JuraSensor(device, "connection")]
 
     # Create alert binary sensors
-    for alert in ALERT_SENSORS:
-        entities.append(JuraAlertBinarySensor(
-            device,
-            alert["type"],
-            alert["name_pattern"],
-            alert["display_name"],
-            alert["icon"],
-            alert.get("device_class", BinarySensorDeviceClass.PROBLEM),
-            alert.get("entity_category")
-        ))
-        _LOGGER.debug(
-            f"Added alert sensor: {alert['display_name']} for pattern '{alert['name_pattern']}'")
+    for alert_info in ALERT_SENSORS:
+        entities.append(JuraAlertBinarySensor(device, alert_info))
 
     add_entities(entities)
 
@@ -124,15 +115,17 @@ class JuraSensor(JuraEntity, BinarySensorEntity):
 class JuraAlertBinarySensor(JuraEntity, BinarySensorEntity):
     """Binary sensor for Jura alerts."""
 
-    def __init__(self, device, alert_type, name_pattern, display_name, icon, device_class=BinarySensorDeviceClass.PROBLEM, entity_category=None):
+    def __init__(self, device, alert_info: dict):
         """Initialize the sensor."""
-        self._name_pattern = name_pattern.lower(
-        )  # Store name pattern before calling super().__init__
-        super().__init__(device, f"alert_{alert_type}")
-        self._attr_name = f"{device.name} {display_name}"
-        self._attr_icon = icon
-        self._attr_device_class = device_class
-        self._attr_entity_category = entity_category
+        # Store name pattern before calling super().__init__
+        self._name_pattern = alert_info["name_pattern"].lower()
+
+        super().__init__(device, f"alert_{alert_info['type']}")
+
+        self._attr_name = f"{device.name} {alert_info['display_name']}"
+        self._attr_icon = alert_info["icon"]
+        self._attr_device_class = alert_info["device_class"]
+        self._attr_entity_category = alert_info["entity_category"]
 
         # Register for updates on alerts
         device.register_alert_update(self.internal_update)
@@ -142,7 +135,7 @@ class JuraAlertBinarySensor(JuraEntity, BinarySensorEntity):
         # Check if any active alert's name contains our pattern
         self._attr_is_on = any(
             self._name_pattern in alert_name.lower()
-            for _, alert_name in self.device.alerts.items()
+            for _, alert_name in self.device.active_alerts.items()
         )
 
         if self.hass:

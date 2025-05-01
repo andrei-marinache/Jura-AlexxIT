@@ -30,7 +30,7 @@ class UUIDs:
 
 
 class Client:
-    def __init__(self, device: BLEDevice, callback: Callable = None, encryption_key: int = None):
+    def __init__(self, device: BLEDevice, callback: Callable = None, key: int = None):
         self.device = device
         self.callback = callback
         self.client: BleakClient | None = None
@@ -39,7 +39,7 @@ class Client:
         self.ping_future: asyncio.Future | None = None
         self.ping_task: asyncio.Task | None = None
         self.ping_time = 0
-        self.key = encryption_key
+        self.key = key
         self.send_data = None
         self.send_time = 0
         self.send_uuid = None
@@ -140,15 +140,15 @@ class Client:
                 return encryption.encdec(list(data), self.key)
             return data
         except BleakError as e:
-            _LOGGER.info(
-                f"Error reading from characteristic {uuid}", exc_info=e)
+            _LOGGER.info(f"Error reading from characteristic {uuid}", exc_info=e)
             raise
         except Exception as e:
-            _LOGGER.info(
-                f"Error reading from characteristic {uuid}", exc_info=e)
+            _LOGGER.info(f"Error reading from characteristic {uuid}", exc_info=e)
             raise
 
-    async def read_statistics_data(self, timeout: int = 20, retries: int = 30) -> bytes | None:
+    async def read_statistics_data(
+        self, timeout: int = 20, retries: int = 30
+    ) -> bytes | None:
         """Read statistics data from the device."""
         _LOGGER.debug("Reading Jura statistics...")
 
@@ -211,7 +211,7 @@ class Client:
         return None
 
 
-def encrypt(data: bytes, key: int) -> bytes:
+def encrypt(data: bytes | list, key: int) -> bytes:
     data = bytearray(data)
     data[0] = key
     return encryption.encdec(data, key)

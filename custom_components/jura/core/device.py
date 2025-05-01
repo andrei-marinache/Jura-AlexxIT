@@ -1,8 +1,8 @@
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, TypedDict
 from zipfile import ZipFile
-import logging
 
 import xmltodict
 from bleak import AdvertisementData, BLEDevice
@@ -42,14 +42,21 @@ class Attribute(TypedDict, total=False):
 
 
 class Device:
-    def __init__(self, name: str, model: str, products: list, device: BLEDevice, encryption_key: int, alerts: list = None):
+    def __init__(
+        self,
+        name: str,
+        model: str,
+        products: list,
+        alerts: dict[int, str],
+        key: int,
+        device: BLEDevice,
+    ):
         self.name = name
         self.model = model
         self.products = products
-        self.alert_names = alerts or []
-        _LOGGER.debug(f"Initializing Device with alerts: {self.alert_names}")
+        self.alerts = alerts
 
-        self.client = Client(device, self.set_connected, encryption_key)
+        self.client = Client(device, self.set_connected, key)
 
         self.connected = False
         self.conn_info = {"mac": device.address}
@@ -63,7 +70,7 @@ class Device:
         self.updates_statistics = []
         self.updates_alerts = []
         self.statistics = {"total_products": None, "product_counts": {}}
-        self.alerts = {}
+        self.active_alerts = {}
 
     @property
     def mac(self) -> str:
@@ -139,8 +146,7 @@ class Device:
         if not attribute:
             return None
 
-        value = next(i["@Value"]
-                     for i in attribute["ITEM"] if i["@Name"] == option)
+        value = next(i["@Value"] for i in attribute["ITEM"] if i["@Name"] == option)
         self.set_value(attr, int(value, 16))
 
     def set_value(self, attr: str, value: int):
@@ -212,7 +218,8 @@ class Device:
         decrypted_data = await self.client.read_statistics_data()
         if decrypted_data is None:
             _LOGGER.debug(
-                "Failed to read statistics data, returning existing statistics")
+                "Failed to read statistics data, returning existing statistics"
+            )
             return self.statistics
 
         # Convert all 3-byte chunks to integers
@@ -220,20 +227,26 @@ class Device:
         for i in range(0, len(decrypted_data), 3):
             if i + 3 <= len(decrypted_data):
                 # Convert 3 bytes to an integer
-                count = int.from_bytes(decrypted_data[i:i+3], 'big')
+                count = int.from_bytes(decrypted_data[i : i + 3], "big")
                 if count == 0xFFFF:  # means 0 it seems
                     count = 0
                 product_counts_array.append(count)
 
         # get total_count from first 3 bytes if available
-        total_count = product_counts_array[0] if product_counts_array and product_counts_array[0] is not None else None
+        total_count = (
+            product_counts_array[0]
+            if product_counts_array and product_counts_array[0] is not None
+            else None
+        )
         _LOGGER.info(
-            f"Total coffee count from data: {total_count if total_count is not None else 'undefined'}")
+            f"Total coffee count from data: {total_count if total_count is not None else 'undefined'}"
+        )
 
         # remove aberrant values if any
         if total_count == 0 or total_count > 1000000:
             _LOGGER.info(
-                "total 0 or too high, something's wrong, returning existing statistics")
+                "total 0 or too high, something's wrong, returning existing statistics"
+            )
             return self.statistics
 
         # get the names associated to the products counts
@@ -242,15 +255,14 @@ class Device:
             if i == 0:  # Skip the total
                 continue
 
-            product = next(
-                (p for p in self.products if int(p['@Code'], 16) == i), None)
+            product = next((p for p in self.products if int(p["@Code"], 16) == i), None)
             if product:
-                product_counts[product['@Name']] = count
+                product_counts[product["@Name"]] = count
                 _LOGGER.debug(
-                    f"Stat entry: Position {i} = {count} -> {product['@Name']}")
+                    f"Stat entry: Position {i} = {count} -> {product['@Name']}"
+                )
             else:
-                _LOGGER.debug(
-                    f"No product found for code {i} with count {count}")
+                _LOGGER.debug(f"No product found for code {i} with count {count}")
 
         # Log the final counts at info log level
         for product, count in product_counts.items():
@@ -259,12 +271,11 @@ class Device:
         # Save the statistics
         self.statistics = {
             "total_products": total_count,
-            "product_counts": product_counts
+            "product_counts": product_counts,
         }
 
         # Notify all statistics listeners
-        _LOGGER.debug(
-            f"Notifying {len(self.updates_statistics)} statistics listeners")
+        _LOGGER.debug(f"Notifying {len(self.updates_statistics)} statistics listeners")
         for handler in self.updates_statistics:
             handler()
 
@@ -274,7 +285,7 @@ class Device:
         """Register a callback for alert updates."""
         self.updates_alerts.append(handler)
         # Trigger an immediate update for the new handler
-        if self.alerts:
+        if self.active_alerts:
             handler()
 
     async def read_alerts(self) -> dict:
@@ -284,7 +295,7 @@ class Device:
         data = await self.client.read_machine_status()
         if data is None:
             _LOGGER.debug("Failed to read machine status data")
-            return self.alerts
+            return self.active_alerts
 
         # Process alert bits
         alerts = {}
@@ -292,22 +303,18 @@ class Device:
             offset_abs = (i >> 3) + 1
             offset_byte = 7 - (i & 0b111)
             if (data[offset_abs] >> offset_byte) & 0b1:
-                if i < len(self.alert_names) and self.alert_names[i] is not None:
-                    alert_name = self.alert_names[i]
-                else:
-                    alert_name = f"Unknown Alert {i}"
-                alerts[i] = alert_name
-                _LOGGER.info(f"Alert active. Alert bit: {i} - {alert_name}")
+                alerts[i] = alert = self.alerts.get(i, f"unknown alert {i}")
+                _LOGGER.debug(f"Alert active. Alert bit: {i} - {alert}")
 
         # Save the alerts
-        self.alerts = alerts
+        self.active_alerts = alerts
 
         # Notify all alert listeners
         _LOGGER.debug(f"Notifying {len(self.updates_alerts)} alert listeners")
         for handler in self.updates_alerts:
             handler()
 
-        return self.alerts
+        return self.active_alerts
 
 
 class EmptyModel(Exception):
@@ -344,28 +351,15 @@ def get_machine(adv: bytes) -> dict | None:
             raw = xmltodict.parse(xml.read())
             products = raw["JOE"]["PRODUCTS"]["PRODUCT"]
 
-            # Extract alerts from XML
-            alerts = []
-            if "ALERTS" in raw["JOE"] and "ALERT" in raw["JOE"]["ALERTS"]:
-                alert_list = raw["JOE"]["ALERTS"]["ALERT"]
-                if not isinstance(alert_list, list):
-                    alert_list = [alert_list]
+            try:
+                alerts = {
+                    int(i["@Bit"]): i["@Name"] for i in raw["JOE"]["ALERTS"]["ALERT"]
+                }
+            except:
+                alerts = {}
 
-                # Create a list with enough slots for all alerts
-                max_bit = max(int(alert.get('@Bit', 0))
-                              for alert in alert_list)
-                alerts = [None] * (max_bit + 1)
-
-                # Populate the alerts list
-                for alert in alert_list:
-                    bit = int(alert.get('@Bit', 0))
-                    alerts[bit] = alert.get('@Name')
-
-    return {
-        "model": items[1],
-        "products": products,
-        "alerts": alerts
-    }
+    # First byte is the encryption key
+    return {"model": items[1], "products": products, "alerts": alerts, "key": adv[0]}
 
 
 def get_options(products: list[dict]) -> dict[str, list]:

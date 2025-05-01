@@ -27,20 +27,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             return
 
         try:
-            manufacturer_data = service_info.advertisement.manufacturer_data[171]
-            # First byte is the encryption key
-            encryption_key = manufacturer_data[0]
-            machine = get_machine(manufacturer_data)
+            machine = get_machine(service_info.advertisement.manufacturer_data[171])
         except EmptyModel:
             return
         except UnsupportedModel as e:
             _LOGGER.error("Unsupported model: %s", *e.args)
             return
 
-        alerts = machine.get("alerts", [])
-
         devices[entry.entry_id] = device = Device(
-            entry.title, machine["model"], machine["products"], service_info.device, encryption_key, alerts
+            entry.title,
+            machine["model"],
+            machine["products"],
+            machine["alerts"],
+            machine["key"],
+            service_info.device,
         )
         device.update_ble(service_info.advertisement)
 
@@ -53,8 +53,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         bluetooth.async_register_callback(
             hass,
             update_ble,
-            {"address": entry.data["mac"],
-                "manufacturer_id": 171, "connectable": True},
+            {"address": entry.data["mac"], "manufacturer_id": 171, "connectable": True},
             bluetooth.BluetoothScanningMode.ACTIVE,
         )
     )

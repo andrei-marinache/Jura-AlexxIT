@@ -1,9 +1,10 @@
+import logging
+
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.const import EntityCategory
-import logging
 
 from .core import DOMAIN
 from .core.entity import JuraEntity
@@ -16,10 +17,12 @@ async def async_setup_entry(
 ) -> None:
     device = hass.data[DOMAIN][config_entry.entry_id]
 
-    add_entities([
-        JuraMakeButton(device, "make"),
-        JuraRefreshStatsButton(device),
-    ])
+    add_entities(
+        [
+            JuraMakeButton(device, "make"),
+            JuraRefreshStatsButton(device),
+        ]
+    )
 
 
 class JuraMakeButton(JuraEntity, ButtonEntity):

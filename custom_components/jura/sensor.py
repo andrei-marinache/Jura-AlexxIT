@@ -1,8 +1,8 @@
 """Sensor platform for Jura integration."""
+
 import logging
-import asyncio
 from datetime import timedelta
-from typing import Any, Callable, Optional
+from typing import Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -10,7 +10,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval
 
@@ -27,7 +27,7 @@ async def async_setup_entry(
     device = hass.data[DOMAIN][entry.entry_id]
 
     # Create the total coffees sensor
-    entities = [JuraTotalCoffeeSensor(device)]
+    entities: list = [JuraTotalCoffeeSensor(device)]
 
     # Create sensors for each product
     for product in device.products:
@@ -55,9 +55,7 @@ async def async_setup_entry(
     # Schedule regular updates
     entry.async_on_unload(
         async_track_time_interval(
-            hass,
-            refresh_statistics,
-            timedelta(seconds=update_interval)
+            hass, refresh_statistics, timedelta(seconds=update_interval)
         )
     )
 
@@ -126,8 +124,9 @@ class JuraProductCountSensor(JuraStatisticsSensor):
 
     def _get_value(self) -> int:
         """Get the count for this specific product."""
-        value = self.device.statistics.get(
-            "product_counts", {}).get(self.product_name, None)
+        value = self.device.statistics.get("product_counts", {}).get(
+            self.product_name, None
+        )
         _LOGGER.debug(f"Product {self.product_name} count: {value}")
         return value
 
@@ -158,12 +157,9 @@ class JuraAlertSensor(JuraEntity, SensorEntity):
         active_alerts = []
         # Filter out specific alert bits that we don't want to show
         filtered_bits = {12, 13, 36, 37, 148, 149, 150, 151}
-        for bit, name in self.device.alerts.items():
+        for bit, name in self.device.active_alerts.items():
             if bit not in filtered_bits:
-                active_alerts.append({
-                    "bit": bit,
-                    "name": name
-                })
+                active_alerts.append({"bit": bit, "name": name})
         self._attr_extra_state_attributes["active_alerts"] = active_alerts
         return "alert" if active_alerts else "ok"
 

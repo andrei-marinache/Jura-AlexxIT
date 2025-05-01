@@ -10,8 +10,23 @@ from . import encryption
 
 _LOGGER = logging.getLogger(__name__)
 
-ACTIVE_TIME = 120
+ACTIVE_TIME = 30
 COMMAND_TIME = 15
+
+
+class UUIDs:
+    """BLE characteristic UUIDs."""
+
+    # https://github.com/Jutta-Proto/protocol-bt-cpp?tab=readme-ov-file#bluetooth-characteristics
+    # Heartbeat
+    ABOUT_MACHINE = "5a401531-ab2e-2548-c435-08c300000710"
+
+    # Start product
+    START_PRODUCT = "5a401525-ab2e-2548-c435-08c300000710"
+
+    # Statistics
+    STATS_COMMAND = "5a401533-ab2e-2548-c435-08c300000710"
+    STATS_DATA = "5A401534-ab2e-2548-c435-08c300000710"
 
 
 class Client:
@@ -25,9 +40,10 @@ class Client:
         self.ping_future: asyncio.Future | None = None
         self.ping_task: asyncio.Task | None = None
         self.ping_time = 0
-
+        self.key = None
         self.send_data = None
         self.send_time = 0
+        self.send_uuid = None
 
     def ping(self):
         self.ping_time = time.time() + ACTIVE_TIME
@@ -43,10 +59,11 @@ class Client:
         if self.ping_future:
             self.ping_future.cancel()
 
-    def send(self, data: bytes):
+    def send(self, data: bytes, uuid: str = UUIDs.START_PRODUCT):
         # if send loop active - we change sending data
         self.send_time = time.time() + COMMAND_TIME
         self.send_data = data
+        self.send_uuid = uuid
 
         # refresh ping time
         self.ping()
@@ -68,15 +85,16 @@ class Client:
                 while time.time() < self.ping_time:
                     # important dummy read for keep connection
                     data = await self.client.read_gatt_char(
-                        "5a401531-ab2e-2548-c435-08c300000710"
+                        UUIDs.ABOUT_MACHINE
                     )
-                    key = data[0]
+                    self.key = data[0]
+                    _LOGGER.debug(f"key: {self.key}")
 
                     if self.send_data:
                         if time.time() < self.send_time:
                             await self.client.write_gatt_char(
-                                "5a401525-ab2e-2548-c435-08c300000710",
-                                data=encrypt(self.send_data, key),
+                                self.send_uuid,
+                                data=encrypt(self.send_data, self.key),
                                 response=True,
                             )
                         self.send_data = None
@@ -103,6 +121,62 @@ class Client:
                 await asyncio.sleep(1)
 
         self.ping_task = None
+
+    async def read(self, uuid: str, decrypt: bool = False):
+        """Read data from a characteristic."""
+        if not self.client:
+            _LOGGER.warning("Cannot read: No active client connection")
+            return None
+
+        try:
+            data = await self.client.read_gatt_char(uuid)
+            if decrypt and self.key:
+                return encryption.encdec(list(data), self.key)
+            return data
+        except BleakError as e:
+            _LOGGER.error(
+                f"Error reading from characteristic {uuid}", exc_info=e)
+            raise
+        except Exception as e:
+            _LOGGER.error(
+                f"Error reading from characteristic {uuid}", exc_info=e)
+            raise
+
+    async def read_statistics_data(self, timeout: int = 20, retries: int = 30) -> bytes | None:
+        """Read statistics data from the device."""
+        _LOGGER.debug("Reading Jura statistics...")
+
+        # Send statistics request command
+        # https://github.com/Jutta-Proto/protocol-bt-cpp?tab=readme-ov-file#writing-1
+        command_bytes = [0x2A, 0x00, 0x01, 0xFF, 0xFF]
+        self.send(bytes(command_bytes), uuid=UUIDs.STATS_COMMAND)
+
+        # Wait for connection
+        if not self.client:
+            _LOGGER.debug("Waiting for client connection...")
+            for _ in range(timeout):
+                if not self.client:
+                    await asyncio.sleep(1)
+                else:
+                    break
+            if not self.client:
+                _LOGGER.debug("Failed to establish connection")
+                return None
+
+        # Wait for statistics to be ready
+        # https://github.com/Jutta-Proto/protocol-bt-cpp?tab=readme-ov-file#reading
+        for _ in range(retries):
+            status = await self.read(UUIDs.STATS_COMMAND)
+            if status and status[1] != 225:  # 225 means not ready
+                break
+            await asyncio.sleep(0.8)
+        else:
+            _LOGGER.error("Device not ready for statistics reading")
+            return None
+
+        # Read statistics data
+        # https://github.com/Jutta-Proto/protocol-bt-cpp?tab=readme-ov-file#statistics-data
+        return await self.read(UUIDs.STATS_DATA, decrypt=True)
 
 
 def encrypt(data: bytes, key: int) -> bytes:

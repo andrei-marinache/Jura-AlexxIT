@@ -147,15 +147,13 @@ class Client:
             raise
 
     async def read_statistics_data(
-        self, timeout: int = 20, retries: int = 30
+        self, command_bytes, timeout: int = 20, retries: int = 30
     ) -> bytes | None:
         """Read statistics data from the device."""
-        _LOGGER.debug("Reading Jura statistics...")
+        _LOGGER.debug("Reading Jura statistics from device...")
 
         # Send statistics request command
         # https://github.com/Jutta-Proto/protocol-bt-cpp?tab=readme-ov-file#writing-1
-        command_bytes = [0x2A, 0x00, 0x01, 0xFF, 0xFF]
-        self.send(bytes(command_bytes), uuid=UUIDs.STATS_COMMAND)
 
         # Wait for connection
         if not self.client:
@@ -167,6 +165,12 @@ class Client:
             if not self.client:
                 _LOGGER.debug("Failed to establish connection")
                 return None
+
+        await self.client.write_gatt_char(
+            UUIDs.STATS_COMMAND,
+            data=encrypt(bytes(command_bytes), self.key),
+            response=True,
+        )
 
         # Wait for statistics to be ready
         # https://github.com/Jutta-Proto/protocol-bt-cpp?tab=readme-ov-file#reading

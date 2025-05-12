@@ -47,6 +47,8 @@ class Device:
         name: str,
         model: str,
         products: list,
+        maintenance_counters: list,
+        maintenance_percents: list,
         alerts: dict[int, str],
         key: int,
         device: BLEDevice,
@@ -54,6 +56,8 @@ class Device:
         self.name = name
         self.model = model
         self.products = products
+        self.maintenance_counters = maintenance_counters
+        self.maintenance_percents = maintenance_percents
         self.alerts = alerts
 
         self.client = Client(device, self.set_connected, key)
@@ -69,7 +73,7 @@ class Device:
         self.updates_product: list = []
         self.updates_statistics = []
         self.updates_alerts = []
-        self.statistics = {"total_products": None, "product_counts": {}}
+        self.statistics = {"total_products": None, "product_counts": {}, "maintenance_counters": {}, "maintenance_percents": {}}
         self.active_alerts = {}
 
     @property
@@ -212,10 +216,10 @@ class Device:
     async def read_statistics(self, force_update: bool = False):
         """Read statistics from the machine."""
 
-        _LOGGER.debug("Reading Jura statistics...")
+        _LOGGER.debug("Reading Jura statistics - product counters...")
 
         # Read statistics data from client
-        decrypted_data = await self.client.read_statistics_data()
+        decrypted_data = await self.client.read_statistics_data(command_bytes=[0x2A, 0x00, 0x01, 0xFF, 0xFF])
         if decrypted_data is None:
             _LOGGER.debug(
                 "Failed to read statistics data, returning existing statistics"
@@ -266,13 +270,46 @@ class Device:
 
         # Log the final counts at info log level
         for product, count in product_counts.items():
-            _LOGGER.info(f"Product: {product}, Count: {count}")
+            _LOGGER.debug(f"Product: {product}, Count: {count}")
+
+        _LOGGER.debug("Reading Jura statistics - maintenance counters...")
+        decrypted_data = await self.client.read_statistics_data(command_bytes=[0x2A, 0x00, 0x04, 0x01, 0x00])
+        if decrypted_data is None:
+            _LOGGER.debug(
+                "Failed to read statistics data, returning existing statistics"
+            )
+            return self.statistics
+
+        maintenance_counters_array = [int("".join(["%02x" % d for d in decrypted_data[i:i+2]]), 16) for i in range(0, len(decrypted_data), 2)]
+        maintenance_counters = dict(zip(self.maintenance_counters, maintenance_counters_array))
+        _LOGGER.debug(f"Maintenance counters: {maintenance_counters}")
+
+        _LOGGER.debug("Reading maintenance percents...")
+        decrypted_data = await self.client.read_statistics_data(command_bytes=[0x2A, 0x00, 0x08, 0x01, 0x00])
+        if decrypted_data is None:
+            _LOGGER.debug(
+                "Failed to read statistics data, returning existing statistics"
+            )
+            return self.statistics
+
+        maintenance_percents = {}
+        for i in range(len(self.maintenance_percents)):
+            value = decrypted_data[i]
+            if 0 <= value <= 100:
+                maintenance_percents[self.maintenance_percents[i]] = 100 - value
+            if value == 255:
+                maintenance_percents[self.maintenance_percents[i]] = 100
+        _LOGGER.debug(f"Maintenance percents: {maintenance_percents}")
 
         # Save the statistics
         self.statistics = {
             "total_products": total_count,
             "product_counts": product_counts,
+            "maintenance_counters": maintenance_counters,
+            "maintenance_percents": maintenance_percents,
         }
+
+        _LOGGER.debug(f"final statistics: {self.statistics}")
 
         # Notify all statistics listeners
         _LOGGER.debug(f"Notifying {len(self.updates_statistics)} statistics listeners")
@@ -358,8 +395,38 @@ def get_machine(adv: bytes) -> dict | None:
             except:
                 alerts = {}
 
+            try:
+                maintenance_counters = [
+                    item["@Type"] for bank in raw["JOE"]["STATISTIC"]["MAINTENANCEPAGE"]["BANK"]
+                    if bank["@Command"] == "@TG:43"
+                    for item in bank["TEXTITEM"]
+                ]
+            except Exception as e:
+                _LOGGER.error(f"Error extracting maintenance counters: {e}")
+                maintenance_counters = {}
+
+            try:
+                maintenance_percents = [
+                    item["@Type"] for bank in raw["JOE"]["STATISTIC"]["MAINTENANCEPAGE"]["BANK"]
+                    if bank["@Command"] == "@TG:C0"
+                    for item in bank["TEXTITEM"]
+                ]
+            except Exception as e:
+                _LOGGER.error(f"Error extracting maintenance percents: {e}")
+                maintenance_percents = {}
+
+            _LOGGER.debug(f"Maintenance counters: {maintenance_counters}")
+            _LOGGER.debug(f"Maintenance percents: {maintenance_percents}")
+
     # First byte is the encryption key
-    return {"model": items[1], "products": products, "alerts": alerts, "key": adv[0]}
+    return {
+        "model": items[1],
+        "products": products,
+        "alerts": alerts,
+        "key": adv[0],
+        "maintenance_counters": maintenance_counters,
+        "maintenance_percents": maintenance_percents,
+    }
 
 
 def get_options(products: list[dict]) -> dict[str, list]:

@@ -37,6 +37,12 @@ async def async_setup_entry(
         if product.get("@Active") != "false":
             entities.append(JuraProductCountSensor(device, product_name))
 
+    for maintenance_counter in device.maintenance_counters:
+        entities.append(JuraMaintenanceCountersSensor(device, maintenance_counter))
+
+    for maintenance_percent in device.maintenance_percents:
+        entities.append(JuraMaintenancePercentsSensor(device, maintenance_percent))
+
     # Create alert sensors
     entities.append(JuraAlertSensor(device))
 
@@ -122,7 +128,7 @@ class JuraProductCountSensor(JuraStatisticsSensor):
         self.product_name = product_name
         attr_name = f"product_{product_name.lower().replace(' ', '_')}"
         super().__init__(device, attr_name)
-        self._attr_name = f"{device.name} {product_name} Count"
+        self._attr_name = f"{device.name} {product_name}"
 
     def _get_value(self) -> int:
         """Get the count for this specific product."""
@@ -132,6 +138,50 @@ class JuraProductCountSensor(JuraStatisticsSensor):
         _LOGGER.debug(f"Product {self.product_name} count: {value}")
         return value
 
+
+class JuraMaintenanceCountersSensor(JuraStatisticsSensor):
+    """Sensor for individual maintenance count."""
+
+    _attr_icon = "mdi:wrench"
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_native_unit_of_measurement = "times"
+
+    def __init__(self, device, maintenance_counter: str):
+        """Initialize the sensor."""
+        self.maintenance_counter = maintenance_counter
+        attr_name = f"cleaning_count_{maintenance_counter.lower().replace(' ', '_')}"
+        super().__init__(device, attr_name)
+        self._attr_name = f"MNT {device.name} {maintenance_counter}"
+
+    def _get_value(self) -> int:
+        """Get the count for this specific maintenance."""
+        value = self.device.statistics.get("maintenance_counters", {}).get(
+            self.maintenance_counter, None
+        )
+        _LOGGER.debug(f"Maintenance counter {self.maintenance_counter} count: {value}")
+        return value
+
+class JuraMaintenancePercentsSensor(JuraStatisticsSensor):
+    """Sensor for individual maintenance percents."""
+
+    _attr_icon = "mdi:percent"
+    _attr_state_class = SensorStateClass.TOTAL
+    _attr_native_unit_of_measurement = "%"
+
+    def __init__(self, device, maintenance_percent: str):
+        """Initialize the sensor."""
+        self.maintenance_percent = maintenance_percent
+        attr_name = f"cleaning_percent_{maintenance_percent.lower().replace(' ', '_')}"
+        super().__init__(device, attr_name)
+        self._attr_name = f"MNT % {device.name} {maintenance_percent} Left"
+
+    def _get_value(self) -> int:
+        """Get the value for this specific maintenance percent."""
+        value = self.device.statistics.get("maintenance_percents", {}).get(
+            self.maintenance_percent, None
+        )
+        _LOGGER.debug(f"Cleaning percent {self.maintenance_percent} %: {value}")
+        return value
 
 class JuraAlertSensor(JuraEntity, SensorEntity):
     """Sensor for machine alerts."""

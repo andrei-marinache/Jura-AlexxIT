@@ -38,6 +38,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             entry.title,
             machine["model"],
             machine["products"],
+            machine["maintenance_counters"],
+            machine["maintenance_percents"],
             machine["alerts"],
             machine["key"],
             service_info.device,

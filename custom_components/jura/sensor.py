@@ -3,6 +3,8 @@
 import logging
 from datetime import timedelta
 from typing import Any
+from .core.alert_sensors import ALERT_SENSORS
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -155,13 +157,25 @@ class JuraAlertSensor(JuraEntity, SensorEntity):
     def _get_value(self) -> str:
         """Get the alert status."""
         active_alerts = []
-        # Filter out specific alert bits that we don't want to show
-        filtered_bits = {12, 13, 36, 37, 148, 149, 150, 151}
         for bit, name in self.device.active_alerts.items():
-            if bit not in filtered_bits:
-                active_alerts.append({"bit": bit, "name": name})
+            active_alerts.append({"bit": bit, "name": name})
         self._attr_extra_state_attributes["active_alerts"] = active_alerts
-        return "alert" if active_alerts else "ok"
+
+        if not active_alerts:
+            return "ok"
+
+        # Check if any of the active alerts is PROBLEM type
+        for alert in active_alerts:
+            alert_name = alert["name"]
+            matched_sensor = next(
+                (s for s in ALERT_SENSORS if s["name_pattern"].lower() in alert_name.lower()),
+                None
+            )
+            if matched_sensor and matched_sensor.get("device_class") == BinarySensorDeviceClass.PROBLEM:
+                return "alert"
+
+        # If no PROBLEM type alerts are found, return "ok"
+        return "ok"
 
     def internal_update(self):
         """Override parent method to ensure alerts are refreshed."""

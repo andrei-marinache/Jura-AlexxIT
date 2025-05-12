@@ -207,7 +207,7 @@ ALERT_SENSORS = [
     {
         "name_pattern": "empty grounds RTC",
         "type": "empty_grounds_RTC",
-        "display_name": "Alarm - Empty Grounds",
+        "display_name": "Alarm - Empty Grounds RTC",
         # "icon": "mdi:washing-machine",
         "device_class": BinarySensorDeviceClass.PROBLEM,
         "entity_category": EntityCategory.DIAGNOSTIC,

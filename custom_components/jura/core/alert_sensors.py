@@ -1,4 +1,3 @@
-from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.const import EntityCategory
 
 ALERT_SENSORS = [
@@ -8,7 +7,7 @@ ALERT_SENSORS = [
         "type": "insert_tray",
         "display_name": "Alarm - Insert Tray",
         # "icon": "mdi:tray",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -16,7 +15,7 @@ ALERT_SENSORS = [
         "type": "fill_water",
         "display_name": "Alarm - Fill Water",
         # "icon": "mdi:water",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -24,7 +23,7 @@ ALERT_SENSORS = [
         "type": "empty_grounds",
         "display_name": "Alarm - Empty Grounds",
         # "icon": "mdi:delete",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -32,7 +31,7 @@ ALERT_SENSORS = [
         "type": "empty_tray",
         "display_name": "Alarm - Empty Tray",
         # "icon": "mdi:tray-alert",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     # Service alerts (require cleaning or filter replacement)
@@ -41,7 +40,7 @@ ALERT_SENSORS = [
         "type": "cleaning_alert",
         "display_name": "Alarm - Cleaning Needed",
         # "icon": "mdi:washing-machine",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -49,7 +48,7 @@ ALERT_SENSORS = [
         "type": "filter_alert",
         "display_name": "Alarm - Filter Change Needed",
         # "icon": "mdi:air-filter",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     }, 
     {
@@ -57,7 +56,7 @@ ALERT_SENSORS = [
         "type": "cappu_rinse_alert",
         "display_name": "Alarm - Milk System Rinse Needed",
         # "icon": "mdi:cup-water",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -65,7 +64,7 @@ ALERT_SENSORS = [
         "type": "cappu_clean_alert",
         "display_name": "Alarm - Milk System Cleaning Needed",
         # "icon": "mdi:cup-water",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -73,7 +72,7 @@ ALERT_SENSORS = [
         "type": "Coffee_Eye_(cup_detected)",
         "display_name": "Info - Coffee Eye (cup detected)",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -81,7 +80,7 @@ ALERT_SENSORS = [
         "type": "Info_-_cappu_clean_alert",
         "display_name": "Alarm - Info - cappu clean alert",
         # "icon": "mdi:washing-machine",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -89,7 +88,7 @@ ALERT_SENSORS = [
         "type": "Info_-_coffee_clean_alert",
         "display_name": "Alarm - Info - coffee clean alert",
         # "icon": "mdi:washing-machine",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -97,7 +96,7 @@ ALERT_SENSORS = [
         "type": "Info_-_decalc_alert",
         "display_name": "Alarm - Info - decalc alert",
         # "icon": "mdi:washing-machine",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -105,7 +104,7 @@ ALERT_SENSORS = [
         "type": "Info_-_filter_used_up_alert",
         "display_name": "Alarm - Info - filter used up alert",
         # "icon": "mdi:washing-machine",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -113,7 +112,7 @@ ALERT_SENSORS = [
         "type": "LockedKeys",
         "display_name": "Info - LockedKeys",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -121,7 +120,7 @@ ALERT_SENSORS = [
         "type": "ML/OZ_status",
         "display_name": "Info - ML/OZ status",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -129,7 +128,7 @@ ALERT_SENSORS = [
         "type": "Open_Tap",
         "display_name": "Info - Open Tap",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -137,7 +136,7 @@ ALERT_SENSORS = [
         "type": "RemoteScreen",
         "display_name": "Info - Remote Screen",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -145,7 +144,7 @@ ALERT_SENSORS = [
         "type": "SwitchOff_Delay_active",
         "display_name": "Info - SwitchOff Delay active",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -153,7 +152,7 @@ ALERT_SENSORS = [
         "type": "active_RF_filter",
         "display_name": "Info - Filter Installed",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -161,7 +160,7 @@ ALERT_SENSORS = [
         "type": "close_front_cover",
         "display_name": "Alarm - Close Front Cover",
         # "icon": "mdi:arrow-down-drop-circle",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -169,7 +168,7 @@ ALERT_SENSORS = [
         "type": "close_powder_cover",
         "display_name": "Alarm - Close Powder Cover",
         # "icon": "mdi:cup",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -177,7 +176,7 @@ ALERT_SENSORS = [
         "type": "close_tab",
         "display_name": "Alarm - Close Tab",
         # "icon": "mdi:color-helper",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -185,7 +184,7 @@ ALERT_SENSORS = [
         "type": "coffee_ready",
         "display_name": "Info - Coffee Ready",
         # "icon": "mdi:coffee-to-go",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -193,7 +192,7 @@ ALERT_SENSORS = [
         "type": "coffee_rinsing",
         "display_name": "Info - Coffee Rinsing",
         # "icon": "mdi:cup-water",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -201,7 +200,7 @@ ALERT_SENSORS = [
         "type": "decalc_alert",
         "display_name": "Alarm - Decalc Needed",
         # "icon": "mdi:washing-machine",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -209,7 +208,7 @@ ALERT_SENSORS = [
         "type": "empty_grounds_RTC",
         "display_name": "Alarm - Empty Grounds RTC",
         # "icon": "mdi:washing-machine",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -217,7 +216,7 @@ ALERT_SENSORS = [
         "type": "energy_safe",
         "display_name": "Info - Energy Safe",
         # "icon": "mdi:power-settings",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -225,7 +224,7 @@ ALERT_SENSORS = [
         "type": "enjoy_product",
         "display_name": "Info - Enjoy Product",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -233,7 +232,7 @@ ALERT_SENSORS = [
         "type": "error_milk_(milk_sensor)",
         "display_name": "Alarm - error milk (milk sensor)",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -241,7 +240,7 @@ ALERT_SENSORS = [
         "type": "error_status",
         "display_name": "Alarm - error status",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -249,7 +248,7 @@ ALERT_SENSORS = [
         "type": "fill_powder",
         "display_name": "Alarm - Fill Powder",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -257,7 +256,7 @@ ALERT_SENSORS = [
         "type": "fill_system",
         "display_name": "Alarm - Fill System",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -265,7 +264,7 @@ ALERT_SENSORS = [
         "type": "goodbye",
         "display_name": "Info - Goodbye",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -273,7 +272,7 @@ ALERT_SENSORS = [
         "type": "heating_up",
         "display_name": "Info - Heating Up",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -281,7 +280,7 @@ ALERT_SENSORS = [
         "type": "insert_coffee_bin",
         "display_name": "Alarm - Insert Coffee Bin",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -289,7 +288,7 @@ ALERT_SENSORS = [
         "type": "left_bean_alert",
         "display_name": "Alarm - Left Bean Alert",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -297,7 +296,7 @@ ALERT_SENSORS = [
         "type": "milk_alert",
         "display_name": "Alarm - Milk Alert",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -305,7 +304,7 @@ ALERT_SENSORS = [
         "type": "no_beans",
         "display_name": "Alarm - No Beans",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -313,7 +312,7 @@ ALERT_SENSORS = [
         "type": "no_milk_(milk_sensor)",
         "display_name": "Alarm - no milk (milk sensor)",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -321,7 +320,7 @@ ALERT_SENSORS = [
         "type": "no_signal_(milk_sensor)",
         "display_name": "Alarm - no signal (milk sensor)",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -329,7 +328,7 @@ ALERT_SENSORS = [
         "type": "not_enough_powder",
         "display_name": "Alarm - Not Enough Powder",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -337,7 +336,7 @@ ALERT_SENSORS = [
         "type": "outlet_missing",
         "display_name": "Alarm - Outlet Missing",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -345,7 +344,7 @@ ALERT_SENSORS = [
         "type": "periphery_alert",
         "display_name": "Alarm - Periphery Alert",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -353,7 +352,7 @@ ALERT_SENSORS = [
         "type": "please_wait",
         "display_name": "Info - Please Wait",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -361,7 +360,7 @@ ALERT_SENSORS = [
         "type": "powder_product",
         "display_name": "Info - Powder Product",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -369,7 +368,7 @@ ALERT_SENSORS = [
         "type": "press_rinse",
         "display_name": "Alarm - Press Rinse",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -377,7 +376,7 @@ ALERT_SENSORS = [
         "type": "program-mode_status",
         "display_name": "Info - Program Mode Status",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -385,7 +384,7 @@ ALERT_SENSORS = [
         "type": "rear_cover_missing",
         "display_name": "Alarm - Rear Cover Missing",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -393,7 +392,7 @@ ALERT_SENSORS = [
         "type": "remove_water_tank",
         "display_name": "Alarm - Remove Water Tank",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -401,7 +400,7 @@ ALERT_SENSORS = [
         "type": "right_bean_alert",
         "display_name": "Alarm - Right Bean Alert",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -409,7 +408,7 @@ ALERT_SENSORS = [
         "type": "steam_ready",
         "display_name": "Info - Steam Ready",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -417,7 +416,7 @@ ALERT_SENSORS = [
         "type": "system_emptying",
         "display_name": "Info - System Emptying",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -425,7 +424,7 @@ ALERT_SENSORS = [
         "type": "system_filling",
         "display_name": "Info - System Filling",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -433,7 +432,7 @@ ALERT_SENSORS = [
         "type": "ventilation_closed",
         "display_name": "Alarm - Ventilation Closed",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "device_class": "problem",
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
@@ -441,7 +440,7 @@ ALERT_SENSORS = [
         "type": "welcome",
         "display_name": "Info - Welcome",
         # "icon": "mdi:circle-outline",
-        "device_class": BinarySensorDeviceClass,
+        "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
 ]

@@ -101,7 +101,7 @@ class JuraTotalCoffeeSensor(JuraStatisticsSensor):
     """Sensor for total coffee count."""
 
     _attr_icon = "mdi:coffee"
-    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_state_class = "total_increasing"
     _attr_native_unit_of_measurement = "products"
 
     def __init__(self, device):
@@ -120,7 +120,7 @@ class JuraProductCountSensor(JuraStatisticsSensor):
     """Sensor for individual product count."""
 
     _attr_icon = "mdi:coffee-outline"
-    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_state_class = "total_increasing"
     _attr_native_unit_of_measurement = "products"
 
     def __init__(self, device, product_name: str):
@@ -143,7 +143,7 @@ class JuraMaintenanceCountersSensor(JuraStatisticsSensor):
     """Sensor for individual maintenance count."""
 
     _attr_icon = "mdi:wrench"
-    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_state_class = "total_increasing"
     _attr_native_unit_of_measurement = "times"
 
     def __init__(self, device, maintenance_counter: str):
@@ -165,7 +165,7 @@ class JuraMaintenancePercentsSensor(JuraStatisticsSensor):
     """Sensor for individual maintenance percents."""
 
     _attr_icon = "mdi:percent"
-    _attr_state_class = SensorStateClass.TOTAL
+    _attr_state_class = "total"
     _attr_native_unit_of_measurement = "%"
 
     def __init__(self, device, maintenance_percent: str):
@@ -221,7 +221,7 @@ class JuraAlertSensor(JuraEntity, SensorEntity):
                 (s for s in ALERT_SENSORS if s["name_pattern"].lower() in alert_name.lower()),
                 None
             )
-            if matched_sensor and matched_sensor.get("device_class") == BinarySensorDeviceClass.PROBLEM:
+            if matched_sensor and matched_sensor.get("device_class") == "problem":
                 return "alert"
 
         # If no PROBLEM type alerts are found, return "ok"

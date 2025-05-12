@@ -35,7 +35,7 @@ async def async_setup_entry(
 
 
 class JuraSensor(JuraEntity, BinarySensorEntity):
-    _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+    _attr_device_class = "connectivity"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def internal_update(self):

@@ -10,6 +10,9 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.const import STATE_ON, STATE_OFF, STATE_UNKNOWN, STATE_UNAVAILABLE
+
 from . import DOMAIN
 from .core.entity import JuraEntity
 
@@ -46,8 +49,10 @@ class JuraSensor(JuraEntity, BinarySensorEntity):
             self._async_write_ha_state()
 
 
-class JuraAlertBinarySensor(JuraEntity, BinarySensorEntity):
+class JuraAlertBinarySensor(JuraEntity, BinarySensorEntity, RestoreEntity):
     """Binary sensor for Jura alerts."""
+
+    should_poll = False
 
     def __init__(self, device, alert_info: dict):
         """Initialize the sensor."""
@@ -57,6 +62,7 @@ class JuraAlertBinarySensor(JuraEntity, BinarySensorEntity):
         super().__init__(device, f"alert_{alert_info['type']}")
 
         self._attr_name = f"{device.name} {alert_info['display_name']}"
+
         if "icon" in alert_info:
             self._attr_icon = alert_info["icon"]
         self._attr_device_class = alert_info["device_class"]
@@ -65,13 +71,29 @@ class JuraAlertBinarySensor(JuraEntity, BinarySensorEntity):
         # Register for updates on alerts
         device.register_alert_update(self.internal_update)
 
+    async def async_added_to_hass(self):
+        """Restore previous state if available."""
+        await super().async_added_to_hass()
+
+        old_state = await self.async_get_last_state()
+        if old_state and old_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            self._attr_is_on = old_state.state == STATE_ON
+            _LOGGER.debug(f"Restored state for {self.entity_id}: {old_state.state}")
+        else:
+            _LOGGER.debug(f"No previous state to restore for {self.entity_id}")
+
+        self.async_write_ha_state()
+
     def internal_update(self):
         """Update the sensor state."""
         # Check if any active alert's name contains our pattern
-        self._attr_is_on = any(
+        is_active = any(
             self._name_pattern in alert_name.lower()
             for _, alert_name in self.device.active_alerts.items()
         )
 
-        if self.hass:
-            self._async_write_ha_state()
+        if is_active != self._attr_is_on:
+            _LOGGER.debug(f"Alert state for {self.entity_id} changed to: {is_active}")
+            self._attr_is_on = is_active
+            if self.hass:
+                self._async_write_ha_state()

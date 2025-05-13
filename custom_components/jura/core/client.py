@@ -187,7 +187,7 @@ class Client:
         # https://github.com/Jutta-Proto/protocol-bt-cpp?tab=readme-ov-file#statistics-data
         return await self.read(UUIDs.STATS_DATA, decrypt=True)
 
-    async def read_machine_status(self) -> bytes | None:
+    async def read_machine_status(self, timeout: int = 20, retries: int = 30) -> bytes | None:
         """Read machine status from the device."""
         _LOGGER.debug("Reading Jura machine status...")
 
@@ -204,9 +204,17 @@ class Client:
                 return None
 
         try:
+            for _ in range(retries):
+                status = await self.read(UUIDs.MACHINE_STATUS)
+                if status and status[2] == 0x3e:  # 0x3e means that statistics are ready.
+                    break
+                await asyncio.sleep(0.8)
+            else:
+                _LOGGER.error("Device not ready for alerts reading")
+                return None
+
             data = await self.read(UUIDs.MACHINE_STATUS, decrypt=True)
             if data:
-                _LOGGER.debug(f"Machine status data: {data}")
                 return data
         except Exception as e:
             _LOGGER.warning("Error reading machine status", exc_info=e)

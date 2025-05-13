@@ -222,7 +222,7 @@ class Device:
         decrypted_data = await self.client.read_statistics_data(command_bytes=[0x2A, 0x00, 0x01, 0xFF, 0xFF])
         if decrypted_data is None:
             _LOGGER.debug(
-                "Failed to read statistics data, returning existing statistics"
+                f"Failed to read statistics data, returning existing statistics {self.statistics}"
             )
             return self.statistics
 
@@ -249,7 +249,7 @@ class Device:
         # remove aberrant values if any
         if total_count == 0 or total_count > 1000000:
             _LOGGER.info(
-                "total 0 or too high, something's wrong, returning existing statistics"
+                f"total 0 or too high, something's wrong, returning existing statistics {self.statistics}"
             )
             return self.statistics
 
@@ -276,7 +276,7 @@ class Device:
         decrypted_data = await self.client.read_statistics_data(command_bytes=[0x2A, 0x00, 0x04, 0x01, 0x00])
         if decrypted_data is None:
             _LOGGER.debug(
-                "Failed to read statistics data, returning existing statistics"
+                f"Failed to read statistics data, returning existing statistics {self.statistics}"
             )
             return self.statistics
 
@@ -288,17 +288,21 @@ class Device:
         decrypted_data = await self.client.read_statistics_data(command_bytes=[0x2A, 0x00, 0x08, 0x01, 0x00])
         if decrypted_data is None:
             _LOGGER.debug(
-                "Failed to read statistics data, returning existing statistics"
+                f"Failed to read statistics data, returning existing statistics {self.statistics}"
             )
             return self.statistics
 
         maintenance_percents = {}
         for i in range(len(self.maintenance_percents)):
             value = decrypted_data[i]
-            if 0 <= value <= 100:
+            if 100 < value < 255:
+                maintenance_percents = {}
+                break
+            if value <= 100:
                 maintenance_percents[self.maintenance_percents[i]] = 100 - value
-            if value == 255:
+            elif value == 255:
                 maintenance_percents[self.maintenance_percents[i]] = 100
+
         _LOGGER.debug(f"Maintenance percents: {maintenance_percents}")
 
         # Save the statistics
@@ -316,6 +320,7 @@ class Device:
         for handler in self.updates_statistics:
             handler()
 
+        _LOGGER.debug(f"Read data OK, sending statistics {self.statistics}")
         return self.statistics
 
     def register_alert_update(self, handler: Callable):
@@ -347,7 +352,7 @@ class Device:
         self.active_alerts = alerts
 
         # Notify all alert listeners
-        _LOGGER.debug(f"Notifying {len(self.updates_alerts)} alert listeners")
+        _LOGGER.debug(f"Notifying {len(self.updates_alerts)} alert listeners: {alerts}")
         for handler in self.updates_alerts:
             handler()
 

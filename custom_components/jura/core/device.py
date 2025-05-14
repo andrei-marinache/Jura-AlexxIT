@@ -283,6 +283,13 @@ class Device:
         maintenance_counters_array = [int("".join(["%02x" % d for d in decrypted_data[i:i+2]]), 16) for i in range(0, len(decrypted_data), 2)]
         maintenance_counters = dict(zip(self.maintenance_counters, maintenance_counters_array))
         _LOGGER.debug(f"Maintenance counters: {maintenance_counters}")
+        total_mnt = sum(maintenance_counters_array)
+        _LOGGER.debug(f"Total maintenance counters: {total_mnt}")
+        if (total_mnt > total_count * 5):
+            _LOGGER.debug(
+                f"Total maintenance counters too high ({total_mnt}, total products {total_count}), something's wrong, returning existing statistics {self.statistics}"
+            )
+            return self.statistics
 
         _LOGGER.debug("Reading maintenance percents...")
         decrypted_data = await self.client.read_statistics_data(command_bytes=[0x2A, 0x00, 0x08, 0x01, 0x00])
@@ -296,8 +303,10 @@ class Device:
         for i in range(len(self.maintenance_percents)):
             value = decrypted_data[i]
             if 100 < value < 255:
-                maintenance_percents = {}
-                break
+                _LOGGER.debug(
+                    f"Incorrect maintenance percents read, returning existing statistics {self.statistics}"
+                )
+                return self.statistics
             if value <= 100:
                 maintenance_percents[self.maintenance_percents[i]] = 100 - value
             elif value == 255:

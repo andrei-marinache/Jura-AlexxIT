@@ -8,6 +8,7 @@ import xmltodict
 from bleak import AdvertisementData, BLEDevice
 
 from .client import Client
+from .sensor_definitions import SENSOR_DEFINITIONS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -73,7 +74,7 @@ class Device:
         self.updates_product: list = []
         self.updates_statistics = []
         self.updates_alerts = []
-        self.statistics = {"total_products": None, "product_counts": {}, "maintenance_counters": {}, "maintenance_percents": {}}
+        self.statistics = {"TOTAL_PRODUCTS": None, "PRODUCTS": {}, "MAINTENANCE_COUNTERS": {}, "MAINTENANCE_PERCENTS": {}}
         self.active_alerts = {}
 
     @property
@@ -170,9 +171,9 @@ class Device:
 
     def start_product(self):
         if self.product:
-            self.client.send(self.command())
+            self.client.send(self.get_product_command())
 
-    def command(self) -> bytes:
+    def get_product_command(self) -> bytes:
         data = bytearray(18)
 
         # set product
@@ -205,7 +206,6 @@ class Device:
         # data[16] = 6
         # need to be set or the machine will go into a half broken state
         data[17] = self.client.key
-
         return data
 
     # Add method to register statistics updates
@@ -222,7 +222,7 @@ class Device:
         decrypted_data = await self.client.read_statistics_data(command_bytes=[0x2A, 0x00, 0x01, 0xFF, 0xFF])
         if decrypted_data is None:
             _LOGGER.debug(
-                f"Failed to read statistics data, returning existing statistics {self.statistics}"
+                f"Failed to read statistics data (product counters), returning existing statistics {self.statistics}"
             )
             return self.statistics
 
@@ -242,6 +242,7 @@ class Device:
             if product_counts_array and product_counts_array[0] is not None
             else None
         )
+
         _LOGGER.info(
             f"Total coffee count from data: {total_count if total_count is not None else 'undefined'}"
         )
@@ -254,6 +255,11 @@ class Device:
             return self.statistics
 
         # get the names associated to the products counts
+        total_W=0
+        total_C=0
+        total_M=0
+        total_CM=0
+
         product_counts = {}
         for i, count in enumerate(product_counts_array):
             if i == 0:  # Skip the total
@@ -262,21 +268,32 @@ class Device:
             product = next((p for p in self.products if int(p["@Code"], 16) == i), None)
             if product:
                 product_counts[product["@Name"]] = count
-                _LOGGER.debug(
-                    f"Stat entry: Position {i} = {count} -> {product['@Name']}"
-                )
+                _LOGGER.debug(f"Stat entry: Position {i} = {count} -> {product['@Name']}")
+                tmp_product=SENSOR_DEFINITIONS["PRODUCTS"][product["@Name"]]
+                if tmp_product.get("water"):
+                    total_W += count
+                if tmp_product.get("coffee") and not tmp_product.get("milk"):
+                    total_C += count
+                if tmp_product.get("milk") and not tmp_product.get("coffee"):
+                    total_M += count
+                if tmp_product.get("coffee") and tmp_product.get("milk"):
+                    total_CM += count
             else:
-                _LOGGER.debug(f"No product found for code {i} with count {count}")
+                if count > 0:
+                    _LOGGER.debug(f"No product found for code {i} with count {count}")
 
+
+        total_products = {"Total Products": total_count, "Total Coffee Only": total_C, "Total Milk Only": total_M, "Total Water Only": total_W, "Total Coffee With Milk": total_CM}
         # Log the final counts at info log level
         for product, count in product_counts.items():
             _LOGGER.debug(f"Product: {product}, Count: {count}")
 
         _LOGGER.debug("Reading Jura statistics - maintenance counters...")
         decrypted_data = await self.client.read_statistics_data(command_bytes=[0x2A, 0x00, 0x04, 0x01, 0x00])
-        if decrypted_data is None:
+        decrypted_data_2 = await self.client.read_statistics_data(command_bytes=[0x2A, 0x00, 0x04, 0x01, 0x00])
+        if decrypted_data is None or (decrypted_data != decrypted_data_2):
             _LOGGER.debug(
-                f"Failed to read statistics data, returning existing statistics {self.statistics}"
+                f"Failed to read statistics data (maintenance counters), returning existing statistics {self.statistics}"
             )
             return self.statistics
 
@@ -293,9 +310,10 @@ class Device:
 
         _LOGGER.debug("Reading maintenance percents...")
         decrypted_data = await self.client.read_statistics_data(command_bytes=[0x2A, 0x00, 0x08, 0x01, 0x00])
-        if decrypted_data is None:
+        decrypted_data_2 = await self.client.read_statistics_data(command_bytes=[0x2A, 0x00, 0x08, 0x01, 0x00])
+        if decrypted_data is None or (decrypted_data != decrypted_data_2):
             _LOGGER.debug(
-                f"Failed to read statistics data, returning existing statistics {self.statistics}"
+                f"Failed to read statistics data (maintenance percents), returning existing statistics {self.statistics}"
             )
             return self.statistics
 
@@ -307,19 +325,19 @@ class Device:
                     f"Incorrect maintenance percents read, returning existing statistics {self.statistics}"
                 )
                 return self.statistics
-            if value <= 100:
-                maintenance_percents[self.maintenance_percents[i]] = 100 - value
-            elif value == 255:
-                maintenance_percents[self.maintenance_percents[i]] = 100
+            if value == 255:
+                maintenance_percents[self.maintenance_percents[i]] = None
+            else:
+                maintenance_percents[self.maintenance_percents[i]] = value
 
         _LOGGER.debug(f"Maintenance percents: {maintenance_percents}")
 
         # Save the statistics
         self.statistics = {
-            "total_products": total_count,
-            "product_counts": product_counts,
-            "maintenance_counters": maintenance_counters,
-            "maintenance_percents": maintenance_percents,
+            "TOTAL_PRODUCTS": total_products,
+            "PRODUCTS": product_counts,
+            "MAINTENANCE_COUNTERS": maintenance_counters,
+            "MAINTENANCE_PERCENTS": maintenance_percents,
         }
 
         _LOGGER.debug(f"final statistics: {self.statistics}")

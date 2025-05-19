@@ -1,5 +1,5 @@
 import logging
-from .core.alert_sensors import ALERT_SENSORS
+from .core.sensor_definitions import SENSOR_DEFINITIONS
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -27,17 +27,14 @@ async def async_setup_entry(
     device = hass.data[DOMAIN][config_entry.entry_id]
 
     # Create connection sensor
-    entities: list = [JuraSensor(device, "connection")]
+    entities: list = [JuraConnectionSensor(device, "connection")]
 
-    # Create alert binary sensors if they are defined for this device
-    for alert_info in ALERT_SENSORS:
-        for alert in device.alerts.values():
-            if alert == alert_info['name_pattern']:
-                entities.append(JuraAlertBinarySensor(device, alert_info))
+    for alert in device.alerts.values():
+        if alert in SENSOR_DEFINITIONS["ALERT_SENSORS"]:
+            entities.append(JuraAlertBinarySensor(device, alert))
     add_entities(entities)
 
-
-class JuraSensor(JuraEntity, BinarySensorEntity):
+class JuraConnectionSensor(JuraEntity, BinarySensorEntity):
     _attr_device_class = "connectivity"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -54,19 +51,20 @@ class JuraAlertBinarySensor(JuraEntity, BinarySensorEntity, RestoreEntity):
 
     should_poll = False
 
-    def __init__(self, device, alert_info: dict):
+    def __init__(self, device, alert_info: str):
         """Initialize the sensor."""
         # Store name pattern before calling super().__init__
-        self._name_pattern = alert_info["name_pattern"].lower()
+        alert = SENSOR_DEFINITIONS["ALERT_SENSORS"][alert_info]
+        self._name_pattern = alert_info
+        attr_name = f"alert_{alert_info.lower().replace(' ', '_')}"
 
-        super().__init__(device, f"alert_{alert_info['type']}")
+        super().__init__(device, attr_name)
+        self._attr_name = f"{device.name} {alert["display_name"]}"
 
-        self._attr_name = f"{device.name} {alert_info['display_name']}"
-
-        if "icon" in alert_info:
-            self._attr_icon = alert_info["icon"]
-        self._attr_device_class = alert_info["device_class"]
-        self._attr_entity_category = alert_info["entity_category"]
+        if "icon" in alert:
+            self._attr_icon = alert["icon"]
+        self._attr_device_class = alert["device_class"]
+        self._attr_entity_category = alert["entity_category"]
 
         # Register for updates on alerts
         device.register_alert_update(self.internal_update)

@@ -3,8 +3,7 @@
 import logging
 from datetime import timedelta
 from typing import Any
-from .core.alert_sensors import ALERT_SENSORS
-from homeassistant.components.binary_sensor import BinarySensorDeviceClass
+from .core.sensor_definitions import SENSOR_DEFINITIONS
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.const import STATE_UNKNOWN, STATE_UNAVAILABLE
 
@@ -31,19 +30,24 @@ async def async_setup_entry(
     device = hass.data[DOMAIN][entry.entry_id]
 
     # Create the total coffees sensor
-    entities: list = [JuraTotalCoffeeSensor(device)]
+    entities = []
+    entities.append(JuraSensor(device, "Total Products", "TOTAL_PRODUCTS"))
+    entities.append(JuraSensor(device, "Total Coffee Only", "TOTAL_PRODUCTS"))
+    entities.append(JuraSensor(device, "Total Coffee With Milk", "TOTAL_PRODUCTS"))
+    entities.append(JuraSensor(device, "Total Milk Only", "TOTAL_PRODUCTS"))
+    entities.append(JuraSensor(device, "Total Water Only", "TOTAL_PRODUCTS"))
 
     # Create sensors for each product
     for product in device.products:
         product_name = product["@Name"]
         if product.get("@Active") != "false":
-            entities.append(JuraProductCountSensor(device, product_name))
+            entities.append(JuraSensor(device, product_name, "PRODUCTS"))
 
     for maintenance_counter in device.maintenance_counters:
-        entities.append(JuraMaintenanceCountersSensor(device, maintenance_counter))
+        entities.append(JuraSensor(device, maintenance_counter, "MAINTENANCE_COUNTERS"))
 
     for maintenance_percent in device.maintenance_percents:
-        entities.append(JuraMaintenancePercentsSensor(device, maintenance_percent))
+        entities.append(JuraSensor(device, maintenance_percent, "MAINTENANCE_PERCENTS"))
 
     # Create alert sensors
     entities.append(JuraAlertSensor(device))
@@ -51,7 +55,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
     # Set up automatic refresh
-    update_interval = hass.data[DOMAIN].get("update_interval", 60)
+    update_interval = hass.data[DOMAIN].get("update_interval", 120)
 
     async def refresh_statistics(*_):
         """Refresh statistics regularly."""
@@ -71,7 +75,6 @@ async def async_setup_entry(
 
     # Do an initial refresh
     hass.async_create_task(refresh_statistics())
-
 
 class JuraStatisticsSensor(JuraEntity, SensorEntity, RestoreEntity):
     """Base class for Jura statistics sensors."""
@@ -111,102 +114,53 @@ class JuraStatisticsSensor(JuraEntity, SensorEntity, RestoreEntity):
 
     def internal_update(self):
         """Override parent method to ensure statistics are refreshed."""
-        _LOGGER.debug(f"Updating sensor {self._attr_name}")
         if self.hass is None:
             return
 
         new_value = self._get_value()
-        _LOGGER.debug(f"Updating sensor {self._attr_name} with value {new_value}")
 
         if new_value is not None:
             self._attr_native_value = new_value
             self.async_write_ha_state()
 
-class JuraTotalCoffeeSensor(JuraStatisticsSensor):
-    """Sensor for total coffee count."""
+class JuraSensor(JuraStatisticsSensor):
+    """Sensor for individual statistics."""
 
-    _attr_icon = "mdi:coffee"
-    _attr_state_class = "total_increasing"
-    _attr_native_unit_of_measurement = "products"
+    def __init__(self, device, sensor_name: str, read_from: str = None):
+        if sensor_name in SENSOR_DEFINITIONS[read_from]:
+            sensor = SENSOR_DEFINITIONS[read_from][sensor_name]
 
-    def __init__(self, device):
-        """Initialize the sensor."""
-        super().__init__(device, "total_product")
-        self._attr_name = f"{device.name} Total Products"
+            if "icon" in sensor:
+                self._attr_icon = sensor["icon"]
+            if "entity_category" in sensor:
+                self._attr_entity_category = sensor['entity_category']
+            if "unit" in sensor:
+                self._attr_native_unit_of_measurement = sensor['unit']
+            if "state_class" in sensor:
+                self._attr_state_class = sensor['state_class']
 
-    def _get_value(self) -> int:
-        """Get the total coffee count."""
-        value = self.device.statistics.get("total_products", 0)
-        _LOGGER.debug(f"Total coffee value: {value}")
-        return value
-
-
-class JuraProductCountSensor(JuraStatisticsSensor):
-    """Sensor for individual product count."""
-
-    _attr_icon = "mdi:coffee-outline"
-    _attr_state_class = "total_increasing"
-    _attr_native_unit_of_measurement = "products"
-
-    def __init__(self, device, product_name: str):
-        """Initialize the sensor."""
-        self.product_name = product_name
-        attr_name = f"product_{product_name.lower().replace(' ', '_')}"
-        super().__init__(device, attr_name)
-        self._attr_name = f"{device.name} {product_name}"
+            """Initialize the sensor."""
+            self.sensor_name = sensor_name
+            self.read_from = read_from
+            attr_name = f"{read_from}_{sensor_name.lower().replace(' ', '_')}"
+            super().__init__(device, attr_name)
+            self._attr_name = f"{device.name} {sensor['display_name']}"
 
     def _get_value(self) -> int:
-        """Get the count for this specific product."""
-        value = self.device.statistics.get("product_counts", {}).get(
-            self.product_name, None
+        value = self.device.statistics.get(self.read_from, {}).get(
+            self.sensor_name, None
         )
-        _LOGGER.debug(f"Product {self.product_name} count: {value}")
-        return value
+        is_available = value is not None
+        self._attr_available = is_available
+        state = "Available" if is_available else "Unavailable"    
 
+        if self.hass:
+            self.async_write_ha_state()
 
-class JuraMaintenanceCountersSensor(JuraStatisticsSensor):
-    """Sensor for individual maintenance count."""
+        _LOGGER.debug(f"Updating sensor {self.sensor_name} from {self.read_from} with value: {value} ({state})")
 
-    _attr_icon = "mdi:wrench"
-    _attr_state_class = "total_increasing"
-    _attr_native_unit_of_measurement = "times"
-
-    def __init__(self, device, maintenance_counter: str):
-        """Initialize the sensor."""
-        self.maintenance_counter = maintenance_counter
-        attr_name = f"cleaning_count_{maintenance_counter.lower().replace(' ', '_')}"
-        super().__init__(device, attr_name)
-        self._attr_name = f"MNT {device.name} {maintenance_counter}"
-
-    def _get_value(self) -> int:
-        """Get the count for this specific maintenance."""
-        value = self.device.statistics.get("maintenance_counters", {}).get(
-            self.maintenance_counter, None
-        )
-        _LOGGER.debug(f"Maintenance counter {self.maintenance_counter} count: {value}")
-        return value
-
-class JuraMaintenancePercentsSensor(JuraStatisticsSensor):
-    """Sensor for individual maintenance percents."""
-
-    _attr_icon = "mdi:percent"
-    _attr_state_class = "total"
-    _attr_native_unit_of_measurement = "%"
-
-    def __init__(self, device, maintenance_percent: str):
-        """Initialize the sensor."""
-        self.maintenance_percent = maintenance_percent
-        attr_name = f"cleaning_percent_{maintenance_percent.lower().replace(' ', '_')}"
-        super().__init__(device, attr_name)
-        self._attr_name = f"MNT % {device.name} {maintenance_percent} Left"
-
-    def _get_value(self) -> int:
-        """Get the value for this specific maintenance percent."""
-        value = self.device.statistics.get("maintenance_percents", {}).get(
-            self.maintenance_percent, None
-        )
-        _LOGGER.debug(f"Cleaning percent {self.maintenance_percent} %: {value}")
-        return value
+        if is_available:
+            return value
 
 class JuraAlertSensor(JuraEntity, SensorEntity, RestoreEntity):
     """Sensor for machine alerts."""
@@ -261,14 +215,10 @@ class JuraAlertSensor(JuraEntity, SensorEntity, RestoreEntity):
         # Check if any of the active alerts is PROBLEM type
         for alert in active_alerts:
             alert_name = alert["name"]
-            matched_sensor = next(
-                (s for s in ALERT_SENSORS if s["name_pattern"].lower() in alert_name.lower()),
-                None
-            )
-            if matched_sensor and matched_sensor.get("device_class") == "problem":
-                return "alert"
-
-        return "ok"
+            matched_sensor = SENSOR_DEFINITIONS["ALERT_SENSORS"][alert_name]
+            if matched_sensor and matched_sensor["device_class"] == "problem":
+                return alert
+        return None
 
     def internal_update(self):
         """Update the sensor state."""

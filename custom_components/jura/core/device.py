@@ -372,8 +372,12 @@ class Device:
             offset_abs = (i >> 3) + 1
             offset_byte = 7 - (i & 0b111)
             if (data[offset_abs] >> offset_byte) & 0b1:
-                alerts[i] = alert = self.alerts.get(i, f"unknown alert {i}")
-                _LOGGER.debug(f"Alert active. Alert bit: {i} - {alert}")
+                alert = self.alerts.get(i)
+                if alert is not None:
+                    alerts[i] = alert
+                    _LOGGER.debug(f"Alert active. Alert bit: {i} - {alert}")
+                else:
+                    _LOGGER.debug(f"Alert active. Alert bit: {i} - unknown alert")
 
         # Save the alerts
         self.active_alerts = alerts

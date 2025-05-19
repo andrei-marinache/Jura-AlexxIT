@@ -86,7 +86,7 @@ class JuraAlertBinarySensor(JuraEntity, BinarySensorEntity, RestoreEntity):
         """Update the sensor state."""
         # Check if any active alert's name contains our pattern
         is_active = any(
-            self._name_pattern in alert_name.lower()
+            alert_name.lower().replace(" ", "_") in self.entity_id
             for _, alert_name in self.device.active_alerts.items()
         )
 

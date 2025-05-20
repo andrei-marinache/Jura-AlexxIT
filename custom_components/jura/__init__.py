@@ -9,7 +9,7 @@ from .core.device import Device, EmptyModel, UnsupportedModel, get_machine
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = ["binary_sensor", "button", "number", "select", "switch", "sensor"]
+PLATFORMS = ["binary_sensor", "number", "select", "switch", "sensor", "text", "button"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):

@@ -219,7 +219,7 @@ class Device:
         _LOGGER.debug("Reading Jura statistics - product counters...")
 
         # Read statistics data from client
-        decrypted_data = await self.client.read_statistics_data(command_bytes=[0x2A, 0x00, 0x01, 0xFF, 0xFF])
+        decrypted_data = await self.client.read_statistics_data(command_bytes=[self.client.key, 0x00, 0x01, 0xFF, 0xFF])
         if decrypted_data is None:
             _LOGGER.debug(
                 f"Failed to read statistics data (product counters), returning existing statistics {self.statistics}"
@@ -289,8 +289,8 @@ class Device:
             _LOGGER.debug(f"Product: {product}, Count: {count}")
 
         _LOGGER.debug("Reading Jura statistics - maintenance counters...")
-        decrypted_data = await self.client.read_statistics_data(command_bytes=[0x2A, 0x00, 0x04, 0x01, 0x00])
-        decrypted_data_2 = await self.client.read_statistics_data(command_bytes=[0x2A, 0x00, 0x04, 0x01, 0x00])
+        decrypted_data = await self.client.read_statistics_data(command_bytes=[self.client.key, 0x00, 0x04, 0x01, 0x00])
+        decrypted_data_2 = await self.client.read_statistics_data(command_bytes=[self.client.key, 0x00, 0x04, 0x01, 0x00])
         if decrypted_data is None or (decrypted_data != decrypted_data_2):
             _LOGGER.debug(
                 f"Failed to read statistics data (maintenance counters), returning existing statistics {self.statistics}"
@@ -309,8 +309,8 @@ class Device:
             return self.statistics
 
         _LOGGER.debug("Reading maintenance percents...")
-        decrypted_data = await self.client.read_statistics_data(command_bytes=[0x2A, 0x00, 0x08, 0x01, 0x00])
-        decrypted_data_2 = await self.client.read_statistics_data(command_bytes=[0x2A, 0x00, 0x08, 0x01, 0x00])
+        decrypted_data = await self.client.read_statistics_data(command_bytes=[self.client.key, 0x00, 0x08, 0x01, 0x00])
+        decrypted_data_2 = await self.client.read_statistics_data(command_bytes=[self.client.key, 0x00, 0x08, 0x01, 0x00])
         if decrypted_data is None or (decrypted_data != decrypted_data_2):
             _LOGGER.debug(
                 f"Failed to read statistics data (maintenance percents), returning existing statistics {self.statistics}"

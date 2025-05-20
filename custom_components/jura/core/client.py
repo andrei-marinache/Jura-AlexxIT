@@ -115,6 +115,7 @@ class Client:
                             _LOGGER.debug("Heartbeat received")
                     except Exception as e:
                         _LOGGER.debug("heartbeat error, trying to reconnect")
+                        self.client = None
                         await self.wait_for_connection()
 
                     self.ping_future = self.loop.create_future()
@@ -186,7 +187,7 @@ class Client:
         # Request statistics
         await self.write_gatt(characteristic=UUIDs.STATS_COMMAND, data=command_bytes)
         # Wait until statistics are ready
-        await self.read_data_until_ready(characteristic=UUIDs.STATS_COMMAND, check_pos=0, check_value_not=0x2a)
+        await self.read_data_until_ready(characteristic=UUIDs.STATS_COMMAND, check_pos=0, check_value_not=self.key)
         # Read statistics data
         result = await self.read_data_until_ready(characteristic=UUIDs.STATS_DATA, check_pos=0)
         return result

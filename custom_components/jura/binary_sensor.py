@@ -28,10 +28,8 @@ async def async_setup_entry(
 
     # Create connection sensor
     entities: list = [JuraConnectionSensor(device, "connection")]
-
-    for alert in device.alerts.values():
-        if alert in SENSOR_DEFINITIONS["ALERT_SENSORS"]:
-            entities.append(JuraAlertBinarySensor(device, alert))
+    for alert_bit in device.alerts.keys():
+        entities.append(JuraAlertBinarySensor(device, alert_bit))
     add_entities(entities)
 
 class JuraConnectionSensor(JuraEntity, BinarySensorEntity):
@@ -51,12 +49,12 @@ class JuraAlertBinarySensor(JuraEntity, BinarySensorEntity, RestoreEntity):
 
     should_poll = False
 
-    def __init__(self, device, alert_info: str):
+    def __init__(self, device, alert_bit: str):
         """Initialize the sensor."""
         # Store name pattern before calling super().__init__
-        alert = SENSOR_DEFINITIONS["ALERT_SENSORS"][alert_info]
-        self._name_pattern = alert_info
-        attr_name = f"alert_{alert_info.lower().replace(' ', '_')}"
+        alert = SENSOR_DEFINITIONS["ALERT_SENSORS"][str(alert_bit)]
+        self._name_pattern = alert['name']
+        attr_name = f"alert_{alert['name'].replace(' ', '_')}"
 
         super().__init__(device, attr_name)
         self._attr_name = f"{device.name} {alert["display_name"]}"
@@ -85,8 +83,9 @@ class JuraAlertBinarySensor(JuraEntity, BinarySensorEntity, RestoreEntity):
     def internal_update(self):
         """Update the sensor state."""
         # Check if any active alert's name contains our pattern
+
         is_active = any(
-            alert_name.lower().replace(" ", "_") in self.entity_id
+            f"_alert_{alert_name.lower().replace(' ', '_')}" in self.entity_id
             for _, alert_name in self.device.active_alerts.items()
         )
 

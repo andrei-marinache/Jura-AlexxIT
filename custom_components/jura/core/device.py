@@ -269,7 +269,7 @@ class Device:
             if product:
                 product_counts[product["@Name"]] = count
                 _LOGGER.debug(f"Stat entry: Position {i} = {count} -> {product['@Name']}")
-                tmp_product=SENSOR_DEFINITIONS["PRODUCTS"][product["@Name"]]
+                tmp_product=SENSOR_DEFINITIONS["PRODUCTS"][str(i)]
                 if tmp_product.get("water"):
                     total_W += count
                 if tmp_product.get("coffee") and not tmp_product.get("milk"):

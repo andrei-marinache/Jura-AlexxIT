@@ -39,9 +39,9 @@ async def async_setup_entry(
 
     # Create sensors for each product
     for product in device.products:
-        product_name = product["@Name"]
+        product_id = product["@Code"]
         if product.get("@Active") != "false":
-            entities.append(JuraSensor(device, product_name, "PRODUCTS"))
+            entities.append(JuraSensor(device, str(int(product_id,16)), "PRODUCTS"))
 
     for maintenance_counter in device.maintenance_counters:
         entities.append(JuraSensor(device, maintenance_counter, "MAINTENANCE_COUNTERS"))
@@ -126,10 +126,10 @@ class JuraStatisticsSensor(JuraEntity, SensorEntity, RestoreEntity):
 class JuraSensor(JuraStatisticsSensor):
     """Sensor for individual statistics."""
 
-    def __init__(self, device, sensor_name: str, read_from: str = None):
-        if sensor_name in SENSOR_DEFINITIONS[read_from]:
-            sensor = SENSOR_DEFINITIONS[read_from][sensor_name]
-
+    def __init__(self, device, sensor_id: str, read_from: str = None):
+        if sensor_id in SENSOR_DEFINITIONS[read_from]:
+            sensor = SENSOR_DEFINITIONS[read_from][sensor_id]
+            sensor_name=SENSOR_DEFINITIONS[read_from][sensor_id]['name']
             if "icon" in sensor:
                 self._attr_icon = sensor["icon"]
             if "entity_category" in sensor:
@@ -214,11 +214,10 @@ class JuraAlertSensor(JuraEntity, SensorEntity, RestoreEntity):
 
         # Check if any of the active alerts is PROBLEM type
         for alert in active_alerts:
-            alert_name = alert["name"]
-            matched_sensor = SENSOR_DEFINITIONS["ALERT_SENSORS"][alert_name]
+            matched_sensor = SENSOR_DEFINITIONS["ALERT_SENSORS"][str(bit)]
             if matched_sensor and matched_sensor["device_class"] == "problem":
-                return alert
-        return None
+                return "alert"
+        return "ok"
 
     def internal_update(self):
         """Update the sensor state."""

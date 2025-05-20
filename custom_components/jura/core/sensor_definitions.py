@@ -941,6 +941,14 @@ SENSOR_DEFINITIONS = {
             "state_class": "total_increasing",
             "icon": "mdi:coffee",
         },
+        "Total Coffee Including Milk Coffee" :
+        {
+            "name": "Total Coffee Including Milk Coffee",
+            "display_name": "Total Coffee Including Milk Coffee",
+            "unit": "products",
+            "state_class": "total_increasing",
+            "icon": "mdi:coffee",
+        },
         "Total Milk Only":
         {
             "name": "Total Milk Only",

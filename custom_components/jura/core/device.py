@@ -253,6 +253,7 @@ class Device:
         total_C=0
         total_M=0
         total_CM=0
+        total_CIM=0
 
         product_counts = {}
         for i, count in enumerate(product_counts_array):
@@ -268,16 +269,17 @@ class Device:
                     total_W += count
                 if tmp_product.get("coffee") and not tmp_product.get("milk"):
                     total_C += count
+                    total_CIM += count
                 if tmp_product.get("milk") and not tmp_product.get("coffee"):
                     total_M += count
                 if tmp_product.get("coffee") and tmp_product.get("milk"):
                     total_CM += count
+                    total_CIM += count
             else:
                 if count > 0:
                     _LOGGER.debug(f"No product found for code {i} with count {count}")
 
-
-        total_products = {"Total Products": total_count, "Total Coffee Only": total_C, "Total Milk Only": total_M, "Total Water Only": total_W, "Total Coffee With Milk": total_CM}
+        total_products = {"Total Products": total_count, "Total Coffee Only": total_C, "Total Milk Only": total_M, "Total Water Only": total_W, "Total Coffee With Milk": total_CM, "Total Coffee Including Milk Coffee": total_CIM}
         # Log the final counts at info log level
         for product, count in product_counts.items():
             _LOGGER.debug(f"Product: {product}, Count: {count}")

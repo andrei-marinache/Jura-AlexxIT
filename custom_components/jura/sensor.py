@@ -34,6 +34,7 @@ async def async_setup_entry(
     entities.append(JuraSensor(device, "Total Products", "TOTAL_PRODUCTS"))
     entities.append(JuraSensor(device, "Total Coffee Only", "TOTAL_PRODUCTS"))
     entities.append(JuraSensor(device, "Total Coffee With Milk", "TOTAL_PRODUCTS"))
+    entities.append(JuraSensor(device, "Total Coffee Including Milk Coffee", "TOTAL_PRODUCTS"))
     entities.append(JuraSensor(device, "Total Milk Only", "TOTAL_PRODUCTS"))
     entities.append(JuraSensor(device, "Total Water Only", "TOTAL_PRODUCTS"))
 

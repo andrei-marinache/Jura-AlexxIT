@@ -220,9 +220,10 @@ class Device:
 
         # Read statistics data from client
         decrypted_data = await self.client.read_statistics_data(command_bytes=[self.client.key, 0x00, 0x01, 0xFF, 0xFF])
-        if decrypted_data is None:
+        decrypted_data_2 = await self.client.read_statistics_data(command_bytes=[self.client.key, 0x00, 0x01, 0xFF, 0xFF])
+        if decrypted_data is None or (decrypted_data != decrypted_data_2):
             _LOGGER.debug(
-                f"Failed to read statistics data (product counters), returning existing statistics {self.statistics}"
+                f"Failed to correctly read statistics data (product counters), returning existing statistics {self.statistics}"
             )
             return self.statistics
 
@@ -246,13 +247,6 @@ class Device:
         _LOGGER.info(
             f"Total coffee count from data: {total_count if total_count is not None else 'undefined'}"
         )
-
-        # remove aberrant values if any
-        if total_count == 0 or total_count > 1000000:
-            _LOGGER.info(
-                f"total 0 or too high, something's wrong, returning existing statistics {self.statistics}"
-            )
-            return self.statistics
 
         # get the names associated to the products counts
         total_W=0

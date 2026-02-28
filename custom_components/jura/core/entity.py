@@ -8,7 +8,9 @@ from .device import Device
 
 
 def sanitize(entity_id: str) -> str:
-    return re.sub(r"[^0-9a-z_]+", "", entity_id.lower())
+    entity_id = re.sub(r"[^0-9a-z_]+", "", entity_id.lower())
+    entity_id = re.sub(r"_+", "_", entity_id)
+    return entity_id
 
 
 class JuraEntity(Entity):

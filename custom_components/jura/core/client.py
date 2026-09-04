@@ -119,8 +119,8 @@ class Client:
                         await self.wait_for_connection()
 
                     self.ping_future = self.loop.create_future()
-                    # 10 is too late, 9 is ok
-                    self.loop.call_later(9, self.ping_future.cancel)
+                    # 10 is too late, 9 is ok (timeout de inactivitate al masinii); 5 = marja
+                    self.loop.call_later(5, self.ping_future.cancel)
                     try:
                         await self.ping_future
                     except asyncio.CancelledError:
@@ -151,6 +151,10 @@ class Client:
                 await self.wait_for_connection()
                 async with asyncio.timeout(10):
                     data = await self.client.read_gatt_char(characteristic.value)
+                # orice citire reusita = activitate: prelungeste sesiunea cu ACTIVE_TIME.
+                # Fara asta ping_time expira la 120 s de la conectare, bucla de heartbeat
+                # se opreste, iar legatura BLE ramane orfana si o taie masina (HCI 0x13).
+                self.ping()
                 decrypted = encryption.encdec(data, self.key)
                 _LOGGER.debug(f"Read data from {characteristic.name} ({characteristic.value}):")
                 _LOGGER.debug(f"Encrypted: {' '.join(f'{b:02x}' for b in data)}")
@@ -174,6 +178,8 @@ class Client:
                 async with asyncio.timeout(5):
                     await self.client.write_gatt_char(characteristic.value, encrypted, response=True)
                     _LOGGER.debug(f"Wrote {' '.join(f'{b:02x}' for b in data)} to {characteristic.name} ({characteristic.value}) (encypted as {' '.join(f'{b:02x}' for b in encrypted)})")
+                # vezi read_data_until_ready: scrierea reusita prelungeste sesiunea
+                self.ping()
                 return None
             except Exception:
                 pass

@@ -30,7 +30,12 @@ class JuraEntity(Entity):
         self._attr_name = device.name + " " + attr.replace("_", " ").title()
         self._attr_unique_id = device.mac.replace(":", "") + "_" + attr
 
-        self.entity_id = DOMAIN + "." + sanitize(self._attr_unique_id)
+        # Nu setam entity_id: DOMAIN e "jura", deci ieseau id-uri cu domeniul gresit
+        # ("jura.<obiect>" in loc de "binary_sensor.<obiect>" etc.) pe toate cele 7
+        # platforme. HA doar avertiza si corecta domeniul, dar din 2027.5.0 va esua.
+        # Entitatile existente nu se redenumesc: entity_id-ul vine din entity registry,
+        # cautat dupa unique_id (entity_platform.py, "Get entity_id from unique ID
+        # registration"), iar unique_id-ul de mai sus ramane neschimbat.
 
         self.internal_update()
 

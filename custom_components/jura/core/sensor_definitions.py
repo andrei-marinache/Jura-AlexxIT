@@ -153,7 +153,7 @@ SENSOR_DEFINITIONS = {
         "21":
         {
             "name": "fill powder",
-            "display_name": "Alarm - Add Grounde Coffee",
+            "display_name": "Alarm - Add Ground Coffee",
             "device_class": "problem",
             "entity_category": EntityCategory.DIAGNOSTIC,
         },

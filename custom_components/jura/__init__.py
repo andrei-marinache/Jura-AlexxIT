@@ -64,6 +64,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
-    if entry.entry_id in hass.data[DOMAIN]:
+    # Drop the device too: left in hass.data, a reload found it and never set the
+    # platforms up again, while its ping loop kept running next to the new one.
+    if device := hass.data[DOMAIN].pop(entry.entry_id, None):
         await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+        await device.client.stop()
     return True

@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 import time
 from typing import Callable
@@ -144,6 +145,15 @@ class Client:
                 await asyncio.sleep(1)
 
         self.ping_task = None
+
+    async def stop(self):
+        """Stop the ping loop and drop the connection, e.g. when the config entry unloads."""
+        self.ping_time = 0
+        if task := self.ping_task:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+            self.ping_task = None
 
     async def _drop_client(self):
         # From AlexxIT/Jura#73: without disconnect() the BleakClient is orphaned and keeps

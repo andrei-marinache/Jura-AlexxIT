@@ -75,7 +75,8 @@ async def async_setup_entry(
     )
 
     # Do an initial refresh
-    hass.async_create_task(refresh_statistics())
+    # A background task: HA does not wait for it at startup (a full BLE read takes ~50 s)
+    entry.async_create_background_task(hass, refresh_statistics(), "jura initial statistics refresh")
 
 class JuraStatisticsSensor(JuraEntity, SensorEntity, RestoreEntity):
     """Base class for Jura statistics sensors."""

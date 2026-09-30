@@ -126,7 +126,10 @@ class Client:
                     try:
                         await self.ping_future
                     except asyncio.CancelledError:
-                        pass
+                        # ping_future.cancel() only wakes the loop; a task cancellation (HA
+                        # shutdown) must propagate, otherwise HA waits 5 s for it on shutdown
+                        if asyncio.current_task().cancelling():
+                            raise
 
             except TimeoutError:
                 pass

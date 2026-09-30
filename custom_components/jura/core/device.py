@@ -74,7 +74,7 @@ class Device:
         self.updates_product: list = []
         self.updates_statistics = []
         self.updates_alerts = []
-        self.statistics = {"TOTAL_PRODUCTS": None, "PRODUCTS": {}, "MAINTENANCE_COUNTERS": {}, "MAINTENANCE_PERCENTS": {}}
+        self.statistics = {"TOTAL_PRODUCTS": {}, "PRODUCTS": {}, "MAINTENANCE_COUNTERS": {}, "MAINTENANCE_PERCENTS": {}}
         self.active_alerts = {}
 
     @property
@@ -213,6 +213,14 @@ class Device:
         """Register a callback for statistics updates."""
         self.updates_statistics.append(handler)
 
+    def counters_went_back(self, group: str, new: dict) -> bool:
+        """Lifetime counters never go back: a decrease means another page was read instead of this one."""
+        old = self.statistics.get(group, {})
+        back = {k: (old[k], v) for k, v in new.items() if old.get(k) is not None and v is not None and v < old[k]}
+        if back:
+            _LOGGER.warning(f"Rejected {group} read, counters went back (old, new): {back}")
+        return bool(back)
+
     async def read_statistics(self, force_update: bool = False):
         """Read statistics from the machine."""
 
@@ -284,6 +292,25 @@ class Device:
         for product, count in product_counts.items():
             _LOGGER.debug(f"Product: {product}, Count: {count}")
 
+        # force_update (the Refresh Statistics button) skips validation: the way out if
+        # the machine really reset its counters.
+        if not force_update:
+            if self.counters_went_back("TOTAL_PRODUCTS", total_products) or self.counters_went_back("PRODUCTS", product_counts):
+                return self.statistics
+            # Every product made raises both the total and its own counter, however long the
+            # integration was stopped. The total also counts products without a counter here
+            # (measured: 18 in 16 months).
+            old_total = self.statistics["TOTAL_PRODUCTS"].get("Total Products")
+            old_products = self.statistics["PRODUCTS"]
+            if old_total is not None and total_count is not None:
+                d_total = total_count - old_total
+                d_products = sum(v - old_products[k] for k, v in product_counts.items() if old_products.get(k) is not None)
+                if not d_products <= d_total <= d_products + 10:
+                    _LOGGER.warning(
+                        f"Rejected product counters read, total +{d_total} vs products +{d_products}: {decrypted_data.hex(' ')}"
+                    )
+                    return self.statistics
+
         _LOGGER.debug("Reading Jura statistics - maintenance counters...")
         decrypted_data = await self.client.read_statistics_data(command_bytes=[self.client.key, 0x00, 0x04, 0x01, 0x00])
         decrypted_data_2 = await self.client.read_statistics_data(command_bytes=[self.client.key, 0x00, 0x04, 0x01, 0x00])
@@ -298,6 +325,8 @@ class Device:
         _LOGGER.debug(f"Maintenance counters: {maintenance_counters}")
         total_mnt = sum(maintenance_counters_array)
         _LOGGER.debug(f"Total maintenance counters: {total_mnt}")
+        if not force_update and self.counters_went_back("MAINTENANCE_COUNTERS", maintenance_counters):
+            return self.statistics
         if (total_mnt > total_count * 5):
             _LOGGER.debug(
                 f"Total maintenance counters too high ({total_mnt}, total products {total_count}), something's wrong, returning existing statistics {self.statistics}"

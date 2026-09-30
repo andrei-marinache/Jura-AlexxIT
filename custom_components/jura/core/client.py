@@ -47,6 +47,8 @@ class Client:
         self.key = key
         self.send_data = None
         self.send_time = 0
+        # last decrypted read, only used for logging when statistics are not ready
+        self.last_read: bytes | None = None
 
     @property
     def connected(self):
@@ -115,7 +117,7 @@ class Client:
                             _LOGGER.debug("Heartbeat received")
                     except Exception as e:
                         _LOGGER.debug("heartbeat error, trying to reconnect")
-                        self.client = None
+                        await self._drop_client()
                         await self.wait_for_connection()
 
                     self.ping_future = self.loop.create_future()
@@ -133,12 +135,23 @@ class Client:
             except Exception as e:
                 _LOGGER.warning("ping error", exc_info=e)
             finally:
-                self.client = None
+                await self._drop_client()
                 if self.callback:
                     self.callback(False)
                 await asyncio.sleep(1)
 
         self.ping_task = None
+
+    async def _drop_client(self):
+        # From AlexxIT/Jura#73: without disconnect() the BleakClient is orphaned and keeps
+        # the link (proxy slot / D-Bus connection) until the machine drops it.
+        client, self.client = self.client, None
+        if client is not None:
+            try:
+                async with asyncio.timeout(5):
+                    await client.disconnect()
+            except Exception as e:
+                _LOGGER.debug("disconnect error", exc_info=e)
 
     async def read_data_until_ready(
             self,  characteristic: UUIDs, check_pos: int, check_value_not: int | None = None, max_attempts: int=30
@@ -156,6 +169,7 @@ class Client:
                 # stops, and the orphaned BLE link is dropped by the machine (HCI 0x13).
                 self.ping()
                 decrypted = encryption.encdec(data, self.key)
+                self.last_read = decrypted
                 _LOGGER.debug(f"Read data from {characteristic.name} ({characteristic.value}):")
                 _LOGGER.debug(f"Encrypted: {' '.join(f'{b:02x}' for b in data)}")
                 _LOGGER.debug(f"Decrypted: {' '.join(f'{b:02x}' for b in decrypted)}")
@@ -193,7 +207,15 @@ class Client:
         # Request statistics
         await self.write_gatt(characteristic=UUIDs.STATS_COMMAND, data=command_bytes)
         # Wait until statistics are ready
-        await self.read_data_until_ready(characteristic=UUIDs.STATS_COMMAND, check_pos=0, check_value_not=self.key)
+        ready = await self.read_data_until_ready(characteristic=UUIDs.STATS_COMMAND, check_pos=0, check_value_not=self.key)
+        if ready is None:
+            # Without "ready", STATS_DATA still holds the previously requested page: another
+            # page with a valid checksum, which would be decoded as this one (e.g. 6852764 coffees).
+            _LOGGER.warning(
+                f"Statistics page {bytes(command_bytes[1:]).hex(' ')} not ready, skipping read "
+                f"(last read: {self.last_read.hex(' ') if self.last_read else None})"
+            )
+            return None
         # Read statistics data
         result = await self.read_data_until_ready(characteristic=UUIDs.STATS_DATA, check_pos=0)
         return result

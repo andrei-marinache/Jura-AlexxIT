@@ -90,6 +90,8 @@ class JuraStatisticsSensor(JuraEntity, SensorEntity, RestoreEntity):
             try:
                 self._attr_native_value = int(old_state.state)
                 _LOGGER.debug(f"Restored state for {self.entity_id}: {old_state.state}")
+                # baseline for the validation in device.read_statistics, also after a restart
+                self.device.statistics.setdefault(self.read_from, {}).setdefault(self.sensor_name, self._attr_native_value)
             except ValueError:
                 _LOGGER.warning(f"Cannot restore state for {self.entity_id}: {old_state.state}")
         else:

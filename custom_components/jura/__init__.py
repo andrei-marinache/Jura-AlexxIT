@@ -1,5 +1,6 @@
 import logging
 
+from bleak import BLEDevice
 from homeassistant.components import bluetooth
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -16,23 +17,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     devices = hass.data.setdefault(DOMAIN, {})
 
     @callback
-    def update_ble(
-        service_info: bluetooth.BluetoothServiceInfoBleak,
-        change: bluetooth.BluetoothChange,
-    ) -> None:
-        _LOGGER.debug(f"{change} {service_info.advertisement}")
-
-        if device := devices.get(entry.entry_id):
-            device.update_ble(service_info.advertisement)
-            return
-
+    def create_device(adv: bytes, ble_device: BLEDevice) -> Device | None:
         try:
-            machine = get_machine(service_info.advertisement.manufacturer_data[171])
+            machine = get_machine(adv)
         except EmptyModel:
-            return
+            return None
         except UnsupportedModel as e:
             _LOGGER.error("Unsupported model: %s", *e.args)
-            return
+            return None
 
         devices[entry.entry_id] = device = Device(
             entry.title,
@@ -42,13 +34,37 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             machine["maintenance_percents"],
             machine["alerts"],
             machine["key"],
-            service_info.device,
+            ble_device,
         )
-        device.update_ble(service_info.advertisement)
-
         hass.create_task(
             hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
         )
+        return device
+
+    @callback
+    def update_ble(
+        service_info: bluetooth.BluetoothServiceInfoBleak,
+        change: bluetooth.BluetoothChange,
+    ) -> None:
+        _LOGGER.debug(f"{change} {service_info.advertisement}")
+
+        if device := devices.get(entry.entry_id):
+            # connect through the path the machine was last heard on
+            device.client.device = service_info.device
+            device.update_ble(service_info.advertisement)
+            return
+
+        adv = service_info.advertisement.manufacturer_data[171]
+        if device := create_device(adv, service_info.device):
+            device.update_ble(service_info.advertisement)
+            hass.config_entries.async_update_entry(entry, data={**entry.data, "adv": adv.hex()})
+
+    # The machine only advertises while it is switched on. Set up from the advertisement
+    # saved last time, so the entities exist (with their restored states) while it is off.
+    if adv := entry.data.get("adv"):
+        mac = entry.data["mac"]
+        ble_device = bluetooth.async_ble_device_from_address(hass, mac, connectable=True)
+        create_device(bytes.fromhex(adv), ble_device or BLEDevice(mac, None, None))
 
     # https://developers.home-assistant.io/docs/core/bluetooth/api/
     entry.async_on_unload(
